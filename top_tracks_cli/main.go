@@ -26,6 +26,7 @@ const redirectURI = "http://localhost:8080/callback"
 var (
 	clientID     = os.Getenv("spotify_clientID")
 	clientSecret = os.Getenv("spotify_secret")
+	state        = os.Getenv("spotify_state")
 	auth         = spotifyauth.New(
 		spotifyauth.WithRedirectURL(redirectURI),
 		spotifyauth.WithScopes(
@@ -37,8 +38,7 @@ var (
 		spotifyauth.WithClientSecret(clientSecret),
 		spotifyauth.WithClientID(clientID),
 	)
-	ch    = make(chan *spotify.Client)
-	state = "kula"
+	ch = make(chan *spotify.Client)
 
 	// regex
 	shortTermRe = regexp.MustCompile("^Favorite Short Term Tracks$")
