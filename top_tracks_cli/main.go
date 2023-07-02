@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff"
 	"github.com/zmb3/spotify/v2"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	"log"
 	"net/http"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"regexp"
 	"runtime"
 	"sync"
+
+	spotifyauth "github.com/zmb3/spotify/v2/auth"
 	time2 "time"
 )
 
@@ -82,7 +83,7 @@ func (config *playlistConfig) createPlaylist(ctx context.Context, c *spotify.Cli
 	for _, v := range page.Tracks {
 		_, err := c.AddTracksToPlaylist(ctx, newPlaylist.ID, v.ID)
 		if err != nil {
-			fmt.Printf("unable to add this track: %v\n", err)
+			return fmt.Errorf("AddTracksToPlaylist(): unable to add track: %v\n", err)
 		}
 	}
 	return nil
@@ -127,14 +128,25 @@ func getCurrentPlaylists(ctx context.Context, c *spotify.Client) (*spotify.Simpl
 	return pl, nil
 }
 
-func getAutomatedPlaylists(playlists *spotify.SimplePlaylistPage) []spotify.SimplePlaylist {
+func getAutomatedPlaylists(ctx context.Context, c *spotify.Client, user *spotify.PrivateUser, playlists *spotify.SimplePlaylistPage) ([]spotify.SimplePlaylist, error) {
 	var foundPlaylists []spotify.SimplePlaylist
 	for _, v := range playlists.Playlists {
 		if plMatch.MatchString(v.Name) {
 			foundPlaylists = append(foundPlaylists, v)
 		}
 	}
-	return foundPlaylists
+	if len(foundPlaylists) == 0 {
+		playlistNames := []string{"Favorite Short Term Tracks", "Favorite Medium Term Tracks", "Favorite Long Term Tracks"}
+		description := "automated from top_tracks_cli"
+		for _, v := range playlistNames {
+			pl, err := c.CreatePlaylistForUser(ctx, user.ID, v, description, false, false)
+			if err != nil {
+				return nil, fmt.Errorf("CreatePlaylistForUser(ctx,%v,%v,%v,false,false): %v", user.ID, v, description, err)
+			}
+			foundPlaylists = append(foundPlaylists, pl.SimplePlaylist)
+		}
+	}
+	return foundPlaylists, nil
 }
 
 func getTopTracksAndFill(ctx context.Context, wg *sync.WaitGroup, c *spotify.Client, p playlistConfig) error {
@@ -162,7 +174,11 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 
 	// use the token to get an authenticated client
 	client := spotify.New(auth.Client(r.Context(), tok))
-	fmt.Fprintf(w, "Login Completed!")
+	_, err = fmt.Fprintf(w, "Login Completed!")
+	if err != nil {
+		fmt.Printf("Fprintf(\"Login Completed\"): %v", err)
+		os.Exit(1)
+	}
 	ch <- client
 }
 
@@ -236,7 +252,11 @@ func main() {
 				fmt.Printf("unable to get user playlists: %v\n", err)
 				os.Exit(1)
 			}
-			automatedPlaylists := getAutomatedPlaylists(allUsersPlaylists)
+			automatedPlaylists, err := getAutomatedPlaylists(ctx, client, user, allUsersPlaylists)
+			if err != nil {
+				fmt.Printf("getAutomatedPlaylists(ctx,client,%v,%v): %v", user, allUsersPlaylists, err)
+				os.Exit(1)
+			}
 			for _, v := range automatedPlaylists {
 				fmt.Printf("purging tracks on playlist %v\n", v.Name)
 				err = purgeTracks(ctx, client, v)
@@ -246,7 +266,6 @@ func main() {
 			}
 		}
 		// TODO(dduclayan): Deal with duplicates
-		// TODO(dduclayan): Create the short/medium/long term playlists if they don't exist
 		// TODO(dduclayan): Refactor to google style guide
 		if *playlistFill == true {
 			allUsersPlaylists, err := getCurrentPlaylists(ctx, client)
@@ -254,7 +273,11 @@ func main() {
 				fmt.Printf("unable to get user playlists: %v", err)
 				os.Exit(1)
 			}
-			automatedPlaylists := getAutomatedPlaylists(allUsersPlaylists)
+			automatedPlaylists, err := getAutomatedPlaylists(ctx, client, user, allUsersPlaylists)
+			if err != nil {
+				fmt.Printf("getAutomatedPlaylists(ctx,client,%v,%v): %v", user, allUsersPlaylists, err)
+				os.Exit(1)
+			}
 			var shortTermConfig playlistConfig
 			var medTermConfig playlistConfig
 			var longTermConfig playlistConfig
