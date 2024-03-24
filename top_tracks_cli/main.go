@@ -1,3 +1,10 @@
+// top_tracks_cli is a CLI tool that generates three playlists of the user's recent top tracks.
+/*
+Usage:
+	main.exe playlist --fill      // Fills up the 'Favorite * Term Tracks' playlists
+	main.exe playlist --purge_fav // Purges songs from the 'Favorite * Term Tracks' playlists
+	main.exe playlist --list_all  // Lists all the user's playlists
+*/
 package main
 
 import (
@@ -128,6 +135,8 @@ func getCurrentPlaylists(ctx context.Context, c *spotify.Client) (*spotify.Simpl
 	return pl, nil
 }
 
+// TODO(dduclayan): This should probably be renamed to something else, as it's getting and creating the playlists if
+// they are not found.
 func getAutomatedPlaylists(ctx context.Context, c *spotify.Client, user *spotify.PrivateUser, playlists *spotify.SimplePlaylistPage) ([]spotify.SimplePlaylist, error) {
 	var foundPlaylists []spotify.SimplePlaylist
 	for _, v := range playlists.Playlists {
