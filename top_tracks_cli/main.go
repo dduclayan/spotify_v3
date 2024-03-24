@@ -1,6 +1,8 @@
-// top_tracks_cli is a CLI tool that generates three playlists of the user's recent top tracks.
 /*
+top_tracks_cli is a CLI tool that generates three playlists of the user's recent top tracks.
+
 Usage:
+
 	main.exe playlist --fill      // Fills up the 'Favorite * Term Tracks' playlists
 	main.exe playlist --purge_fav // Purges songs from the 'Favorite * Term Tracks' playlists
 	main.exe playlist --list_all  // Lists all the user's playlists
@@ -328,6 +330,7 @@ func main() {
 				}
 			}
 
+			// TODO: Should errGroup here.
 			var wg sync.WaitGroup
 			wg.Add(3)
 			go func() {
