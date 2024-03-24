@@ -4,6 +4,8 @@ Usage:
 	main.exe playlist --fill      // Fills up the 'Favorite * Term Tracks' playlists
 	main.exe playlist --purge_fav // Purges songs from the 'Favorite * Term Tracks' playlists
 	main.exe playlist --list_all  // Lists all the user's playlists
+
+From the test-branch.
 */
 package main
 
